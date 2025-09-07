@@ -28,7 +28,13 @@ async def list_resources() -> list[Resource]:
         Resource(
             uri="pokemon://data",
             name="Pokemon Database",
-            description="Access to comprehensive Pokemon data including stats, types, abilities, and moves",
+            description="Access to comprehensive Pokemon data including stats, types, abilities, moves, and evolution information",
+            mimeType="application/json"
+        ),
+        Resource(
+            uri="pokemon://types",
+            name="Type Effectiveness Chart",
+            description="Pokemon type effectiveness relationships for battle calculations",
             mimeType="application/json"
         )
     ]
@@ -37,23 +43,44 @@ async def list_resources() -> list[Resource]:
 async def read_resource(uri: str) -> str:
     """Read Pokemon resource data"""
     if uri == "pokemon://data":
-        return """
-        Pokemon Data Resource
-        
-        This resource provides access to comprehensive Pokemon data from the PokeAPI.
-        
-        Available data includes:
-        - Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
-        - Types (Fire, Water, Grass, etc.)
-        - Abilities
-        - Available moves
-        
-        To query specific Pokemon data, use the get_pokemon tool with a Pokemon name or ID.
-        
-        Example usage:
-        - get_pokemon("pikachu")
-        - get_pokemon("25")  # Pikachu's ID
-        """
+        return json.dumps({
+            "description": "Pokemon Data Resource",
+            "features": [
+                "Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)",
+                "Types (Fire, Water, Grass, Electric, etc.)",
+                "Abilities and their effects",
+                "Available moves and move data",
+                "Evolution chains and requirements",
+                "Physical characteristics (height, weight)",
+                "Base experience and sprites"
+            ],
+            "usage": {
+                "tool": "get_pokemon",
+                "description": "Use get_pokemon tool with Pokemon name or ID to fetch detailed data",
+                "examples": [
+                    "get_pokemon('pikachu')",
+                    "get_pokemon('25')",
+                    "get_pokemon('charizard')"
+                ]
+            },
+            "data_source": "PokeAPI (https://pokeapi.co)",
+            "total_pokemon": "1000+ Pokemon available"
+        }, indent=2)
+    
+    elif uri == "pokemon://types":
+        from .battle.mechanics import TYPE_EFFECTIVENESS
+        return json.dumps({
+            "description": "Type Effectiveness Chart",
+            "type_chart": TYPE_EFFECTIVENESS,
+            "effectiveness_values": {
+                "2.0": "Super effective (2x damage)",
+                "1.0": "Normal effectiveness (1x damage)", 
+                "0.5": "Not very effective (0.5x damage)",
+                "0.0": "No effect (0x damage)"
+            },
+            "usage": "Used automatically in battle simulations for damage calculations"
+        }, indent=2)
+    
     else:
         raise ValueError(f"Unknown resource: {uri}")
 
@@ -63,13 +90,13 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="get_pokemon",
-            description="Get detailed information about a specific Pokemon",
+            description="Get detailed information about a specific Pokemon including stats, types, abilities, moves, and evolution data",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "name_or_id": {
                         "type": "string",
-                        "description": "Pokemon name or ID number"
+                        "description": "Pokemon name (e.g., 'pikachu') or ID number (e.g., '25')"
                     }
                 },
                 "required": ["name_or_id"]
@@ -77,20 +104,34 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="simulate_battle",
-            description="Simulate a battle between two Pokemon",
+            description="Simulate a comprehensive battle between two Pokemon with advanced mechanics including type effectiveness, status effects, and detailed turn-by-turn logging",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "pokemon1": {
                         "type": "string",
-                        "description": "Name or ID of the first Pokemon"
+                        "description": "Name or ID of the first Pokemon battler"
                     },
                     "pokemon2": {
-                        "type": "string",
-                        "description": "Name or ID of the second Pokemon"
+                        "type": "string", 
+                        "description": "Name or ID of the second Pokemon battler"
                     }
                 },
                 "required": ["pokemon1", "pokemon2"]
+            }
+        ),
+        Tool(
+            name="get_evolution_chain",
+            description="Get the complete evolution chain for a Pokemon species",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "pokemon_name": {
+                        "type": "string",
+                        "description": "Pokemon name to get evolution chain for"
+                    }
+                },
+                "required": ["pokemon_name"]
             }
         )
     ]
@@ -102,56 +143,84 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     if name == "get_pokemon":
         name_or_id = arguments.get("name_or_id")
         if not name_or_id:
-            return [TextContent(type="text", text="Error: name_or_id is required")]
+            return [TextContent(type="text", text="Error: name_or_id parameter is required")]
         
         pokemon = await pokemon_client.get_pokemon(name_or_id)
         if not pokemon:
-            return [TextContent(type="text", text=f"Pokemon '{name_or_id}' not found")]
+            return [TextContent(type="text", text=f"Pokemon '{name_or_id}' not found. Please check the spelling or try a different Pokemon name/ID.")]
         
-        # Format Pokemon data as JSON
+        # Get evolution data
+        evolution_data = await pokemon_client.get_evolution_chain(pokemon.species_url)
+        
+        # Format comprehensive Pokemon data
         pokemon_data = {
-            "id": pokemon.id,
-            "name": pokemon.name,
+            "basic_info": {
+                "id": pokemon.id,
+                "name": pokemon.name,
+                "height": f"{pokemon.height/10}m",
+                "weight": f"{pokemon.weight/10}kg",
+                "base_experience": pokemon.base_experience,
+                "sprite_url": pokemon.sprite_url
+            },
             "types": pokemon.types,
             "stats": {
                 "hp": pokemon.stats.hp,
-                "attack": pokemon.stats.attack,
+                "attack": pokemon.stats.attack, 
                 "defense": pokemon.stats.defense,
                 "special_attack": pokemon.stats.special_attack,
                 "special_defense": pokemon.stats.special_defense,
-                "speed": pokemon.stats.speed
+                "speed": pokemon.stats.speed,
+                "total": (pokemon.stats.hp + pokemon.stats.attack + pokemon.stats.defense + 
+                         pokemon.stats.special_attack + pokemon.stats.special_defense + pokemon.stats.speed)
             },
             "abilities": pokemon.abilities,
-            "moves": pokemon.moves[:10]  # Limit to first 10 for MVP
+            "moves": {
+                "sample_moves": pokemon.moves[:15],  # Show more moves
+                "total_available": len(pokemon.moves)
+            },
+            "evolution": evolution_data
         }
         
         return [TextContent(type="text", text=json.dumps(pokemon_data, indent=2))]
+    
+    elif name == "get_evolution_chain":
+        pokemon_name = arguments.get("pokemon_name")
+        if not pokemon_name:
+            return [TextContent(type="text", text="Error: pokemon_name parameter is required")]
+            
+        pokemon = await pokemon_client.get_pokemon(pokemon_name)
+        if not pokemon:
+            return [TextContent(type="text", text=f"Pokemon '{pokemon_name}' not found")]
+            
+        evolution_data = await pokemon_client.get_evolution_chain(pokemon.species_url)
+        return [TextContent(type="text", text=json.dumps(evolution_data, indent=2))]
     
     elif name == "simulate_battle":
         pokemon1_name = arguments.get("pokemon1")
         pokemon2_name = arguments.get("pokemon2")
         
         if not pokemon1_name or not pokemon2_name:
-            return [TextContent(type="text", text="Error: Both pokemon1 and pokemon2 are required")]
+            return [TextContent(type="text", text="Error: Both pokemon1 and pokemon2 parameters are required")]
         
         # Fetch both Pokemon
         pokemon1 = await pokemon_client.get_pokemon(pokemon1_name)
         pokemon2 = await pokemon_client.get_pokemon(pokemon2_name)
         
         if not pokemon1:
-            return [TextContent(type="text", text=f"Pokemon '{pokemon1_name}' not found")]
+            return [TextContent(type="text", text=f"Pokemon '{pokemon1_name}' not found. Please check the spelling or try a different Pokemon.")]
         if not pokemon2:
-            return [TextContent(type="text", text=f"Pokemon '{pokemon2_name}' not found")]
+            return [TextContent(type="text", text=f"Pokemon '{pokemon2_name}' not found. Please check the spelling or try a different Pokemon.")]
         
-        # Simulate the battle
-        result = battle_engine.simulate_battle(pokemon1, pokemon2)
+        # Simulate the battle (NOW PROPERLY ASYNC)
+        result = await battle_engine.simulate_battle(pokemon1, pokemon2)
         
-        # Format battle result
+        # Format comprehensive battle result
         battle_report = {
             "battle_summary": {
                 "winner": result.winner,
-                "loser": result.loser,
-                "total_turns": result.total_turns
+                "loser": result.loser, 
+                "total_turns": result.total_turns,
+                "battle_type": "Advanced Pokemon Battle Simulation"
             },
             "participants": {
                 "pokemon1": {
@@ -161,6 +230,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         "hp": pokemon1.stats.hp,
                         "attack": pokemon1.stats.attack,
                         "defense": pokemon1.stats.defense,
+                        "special_attack": pokemon1.stats.special_attack,
+                        "special_defense": pokemon1.stats.special_defense,
                         "speed": pokemon1.stats.speed
                     }
                 },
@@ -171,22 +242,33 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         "hp": pokemon2.stats.hp,
                         "attack": pokemon2.stats.attack,
                         "defense": pokemon2.stats.defense,
+                        "special_attack": pokemon2.stats.special_attack,
+                        "special_defense": pokemon2.stats.special_defense,
                         "speed": pokemon2.stats.speed
                     }
                 }
             },
-            "battle_log": [{"turn": log.turn, "message": log.message} for log in result.logs]
+            "mechanics_used": [
+                "Type effectiveness calculations",
+                "STAB (Same Type Attack Bonus)",
+                "Critical hit chances",
+                "Speed-based turn order",
+                "Status effect applications",
+                "Comprehensive damage formulas"
+            ],
+            "detailed_log": [{"turn": log.turn, "message": log.message} for log in result.logs]
         }
         
         return [TextContent(type="text", text=json.dumps(battle_report, indent=2))]
     
     else:
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+        return [TextContent(type="text", text=f"Unknown tool: {name}. Available tools: get_pokemon, simulate_battle, get_evolution_chain")]
 
 async def main():
     """Main server entry point"""
     async with stdio_server() as (read_stream, write_stream):
-        print("Server ready for MCP connections via stdio", flush=True)
+        print("🎮 Pokemon Battle MCP Server ready for connections", flush=True)
+        print("📡 Listening on stdio for MCP client connections...", flush=True)
         await server.run(
             read_stream,
             write_stream,
