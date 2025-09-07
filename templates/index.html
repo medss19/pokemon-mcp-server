@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon MCP Server - Web Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .pokemon-search {
+            background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+        }
+        
+        .battle-section {
+            background: linear-gradient(135deg, #fd79a8, #fdcb6e);
+        }
+        
+        .evolution-section {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .battle-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        
+        .pokemon-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .pokemon-card h3 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .types {
+            margin: 10px 0;
+        }
+        
+        .type-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 2px;
+            border-radius: 15px;
+            color: white;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .type-fire { background: #FF6B6B; }
+        .type-water { background: #4ECDC4; }
+        .type-grass { background: #55a3ff; }
+        .type-electric { background: #f9ca24; color: #333; }
+        .type-normal { background: #a4b0be; }
+        .type-fighting { background: #eb2f06; }
+        .type-poison { background: #8e44ad; }
+        .type-ground { background: #f39c12; }
+        .type-flying { background: #3742fa; }
+        .type-psychic { background: #e056fd; }
+        .type-bug { background: #7bed9f; color: #333; }
+        .type-rock { background: #8c7851; }
+        .type-ghost { background: #40407a; }
+        .type-dragon { background: #2f3542; }
+        .type-dark { background: #1e1e1e; }
+        .type-steel { background: #95a5a6; }
+        .type-fairy { background: #fd79a8; }
+        .type-ice { background: #74b9ff; }
+        
+        .battle-log {
+            background: #2d3436;
+            color: #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .battle-summary {
+            background: #00b894;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .evolution-line {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .evolution-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .battle-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Pokemon MCP Server</h1>
+            <p>Test Pokemon Data & Battle Simulation Features</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Pokemon Search Section -->
+            <div class="section pokemon-search">
+                <h2>🔍 Pokemon Search</h2>
+                <div class="input-group">
+                    <label for="pokemonName">Enter Pokemon Name or ID:</label>
+                    <input type="text" id="pokemonName" placeholder="e.g., pikachu, 25, charizard">
+                </div>
+                <button onclick="searchPokemon()">Search Pokemon</button>
+                <div id="pokemonResult"></div>
+            </div>
+            
+            <!-- Battle Simulation Section -->
+            <div class="section battle-section">
+                <h2>⚔️ Battle Simulation</h2>
+                <div class="battle-inputs">
+                    <div class="input-group">
+                        <label for="pokemon1">Pokemon 1:</label>
+                        <input type="text" id="pokemon1" placeholder="e.g., pikachu">
+                    </div>
+                    <div class="input-group">
+                        <label for="pokemon2">Pokemon 2:</label>
+                        <input type="text" id="pokemon2" placeholder="e.g., charizard">
+                    </div>
+                </div>
+                <button onclick="simulateBattle()">Start Battle!</button>
+                <div id="battleResult"></div>
+            </div>
+            
+            <!-- Evolution Line Section -->
+            <div class="section evolution-section">
+                <h2>🔄 Evolution Line</h2>
+                <div class="input-group">
+                    <label for="evolutionPokemon">Pokemon for Evolution Line:</label>
+                    <input type="text" id="evolutionPokemon" placeholder="e.g., bulbasaur, squirtle">
+                </div>
+                <button onclick="getEvolutionLine()">Get Evolution Line</button>
+                <div id="evolutionResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function searchPokemon() {
+            const name = document.getElementById('pokemonName').value.trim();
+            const resultDiv = document.getElementById('pokemonResult');
+            
+            if (!name) {
+                resultDiv.innerHTML = '<div class="error">Please enter a Pokemon name or ID</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">🔍 Searching for ' + name + '...</div>';
+            
+            try {
+                const response = await fetch(`/api/pokemon/${encodeURIComponent(name)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = formatPokemonData(data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function simulateBattle() {
+            const pokemon1 = document.getElementById('pokemon1').value.trim();
+            const pokemon2 = document.getElementById('pokemon2').value.trim();
+            const resultDiv = document.getElementById('battleResult');
+            
+            if (!pokemon1 || !pokemon2) {
+                resultDiv.innerHTML = '<div class="error">Please enter both Pokemon names</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">⚔️ Battle in progress...</div>';
+            
+            try {
+                const response = await fetch('/api/battle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        pokemon1: pokemon1,
+                        pokemon2: pokemon2
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = formatBattleData(data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function getEvolutionLine() {
+            const name = document.getElementById('evolutionPokemon').value.trim();
+            const resultDiv = document.getElementById('evolutionResult');
+            
+            if (!name) {
+                resultDiv.innerHTML = '<div class="error">Please enter a Pokemon name</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">🔄 Getting evolution line...</div>';
+            
+            try {
+                const response = await fetch(`/api/evolution/${encodeURIComponent(name)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = formatEvolutionData(data);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function formatPokemonData(pokemon) {
+            const typeBadges = pokemon.types.map(type => 
+                `<span class="type-badge type-${type}">${type.toUpperCase()}</span>`
+            ).join('');
+            
+            const evolutionInfo = pokemon.evolution_chain ? 
+                `<p><strong>Evolution Line:</strong> ${pokemon.evolution_chain.species_name} → ${pokemon.evolution_chain.evolves_to.join(' → ')}</p>` : 
+                '';
+            
+            return `
+                <div class="result">
+                    <div class="pokemon-card">
+                        <h3>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)} (#${pokemon.id})</h3>
+                        <div class="types">${typeBadges}</div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">HP</div>
+                                <div class="stat-value">${pokemon.stats.hp}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Attack</div>
+                                <div class="stat-value">${pokemon.stats.attack}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Defense</div>
+                                <div class="stat-value">${pokemon.stats.defense}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Sp. Atk</div>
+                                <div class="stat-value">${pokemon.stats.special_attack}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Sp. Def</div>
+                                <div class="stat-value">${pokemon.stats.special_defense}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Speed</div>
+                                <div class="stat-value">${pokemon.stats.speed}</div>
+                            </div>
+                        </div>
+                        
+                        <p><strong>Abilities:</strong> ${pokemon.abilities.join(', ')}</p>
+                        <p><strong>Sample Moves:</strong> ${pokemon.moves.slice(0, 5).join(', ')}</p>
+                        <p><strong>Height:</strong> ${pokemon.height/10}m | <strong>Weight:</strong> ${pokemon.weight/10}kg</p>
+                        ${evolutionInfo}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatBattleData(battle) {
+            const logEntries = battle.battle_log.slice(-15).map(log => 
+                `Turn ${log.turn}: ${log.message}`
+            ).join('\\n');
+            
+            return `
+                <div class="result">
+                    <div class="battle-summary">
+                        🏆 Winner: ${battle.battle_summary.winner.toUpperCase()} 
+                        (${battle.battle_summary.total_turns} turns)
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="pokemon-card">
+                            <h4>${battle.participants.pokemon1.name.toUpperCase()}</h4>
+                            <div class="types">
+                                ${battle.participants.pokemon1.types.map(type => 
+                                    `<span class="type-badge type-${type}">${type.toUpperCase()}</span>`
+                                ).join('')}
+                            </div>
+                            <p>HP: ${battle.participants.pokemon1.stats.hp} | ATK: ${battle.participants.pokemon1.stats.attack} | SPD: ${battle.participants.pokemon1.stats.speed}</p>
+                        </div>
+                        <div class="pokemon-card">
+                            <h4>${battle.participants.pokemon2.name.toUpperCase()}</h4>
+                            <div class="types">
+                                ${battle.participants.pokemon2.types.map(type => 
+                                    `<span class="type-badge type-${type}">${type.toUpperCase()}</span>`
+                                ).join('')}
+                            </div>
+                            <p>HP: ${battle.participants.pokemon2.stats.hp} | ATK: ${battle.participants.pokemon2.stats.attack} | SPD: ${battle.participants.pokemon2.stats.speed}</p>
+                        </div>
+                    </div>
+                    
+                    <h4>📋 Battle Log (Last 15 entries):</h4>
+                    <div class="battle-log">${logEntries}</div>
+                </div>
+            `;
+        }
+        
+        function formatEvolutionData(data) {
+            const evolutionCards = data.evolution_line.map((pokemon, index) => `
+                <div class="evolution-card">
+                    <h4>Stage ${index + 1}</h4>
+                    <h3>${pokemon.name.toUpperCase()}</h3>
+                    <div class="types">
+                        ${pokemon.types.map(type => 
+                            `<span class="type-badge type-${type}">${type.toUpperCase()}</span>`
+                        ).join('')}
+                    </div>
+                    <p>HP: ${pokemon.stats.hp} | ATK: ${pokemon.stats.attack}</p>
+                </div>
+            `).join('');
+            
+            return `
+                <div class="result">
+                    <h3>🔄 Evolution Line (${data.evolution_line.length} stages)</h3>
+                    <div class="evolution-line">
+                        ${evolutionCards}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Allow Enter key to trigger searches
+        document.getElementById('pokemonName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchPokemon();
+        });
+        
+        document.getElementById('pokemon1').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') simulateBattle();
+        });
+        
+        document.getElementById('pokemon2').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') simulateBattle();
+        });
+        
+        document.getElementById('evolutionPokemon').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') getEvolutionLine();
+        });
+    </script>
+</body>
+</html>
