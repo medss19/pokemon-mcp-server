@@ -14,14 +14,12 @@ sys.path.insert(0, str(src_path))
 
 from pokemon_mcp.data.pokemon_client import PokemonClient
 from pokemon_mcp.battle.engine import BattleEngine
-from pokemon_mcp.data.evolution import EvolutionClient
 
 app = Flask(__name__)
 
 # Initialize clients
 pokemon_client = PokemonClient()
-battle_engine = BattleEngine() 
-evolution_client = EvolutionClient()
+battle_engine = BattleEngine()
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -79,16 +77,6 @@ HTML_TEMPLATE = """
         </div>
         <button onclick="simulateBattle()">Start Battle!</button>
         <div id="battle-result"></div>
-    </div>
-
-    <div class="section">
-        <h2>🌟 Evolution Analysis</h2>
-        <div class="form-group">
-            <label>Pokemon Name:</label>
-            <input type="text" id="evolution-name" placeholder="e.g., charmander">
-        </div>
-        <button onclick="getEvolution()">Get Evolution Chain</button>
-        <div id="evolution-result"></div>
     </div>
 
     <script>
@@ -182,44 +170,6 @@ HTML_TEMPLATE = """
                 result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
             }
         }
-
-        async function getEvolution() {
-            const name = document.getElementById('evolution-name').value.trim();
-            const result = document.getElementById('evolution-result');
-            
-            if (!name) {
-                result.innerHTML = '<div class="result error">Please enter a Pokemon name</div>';
-                return;
-            }
-            
-            result.innerHTML = '<div class="result">🔄 Loading evolution data...</div>';
-            
-            try {
-                const response = await fetch(`/api/evolution/${encodeURIComponent(name)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    result.innerHTML = `
-                        <div class="result success">
-                            <h3>🧬 Evolution Chain for ${data.evolution.pokemon_name}</h3>
-                            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                                ${data.evolution.evolution_line.map((pokemon, index) => `
-                                    ${index > 0 ? '<span style="font-size: 20px;">→</span>' : ''}
-                                    <div style="text-align: center; padding: 10px; background: #f0f0f0; border-radius: 8px;">
-                                        <strong>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</strong>
-                                        ${pokemon.trigger ? `<br><small>${pokemon.trigger}</small>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    result.innerHTML = `<div class="result error">❌ ${data.error}</div>`;
-                }
-            } catch (error) {
-                result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
-            }
-        }
     </script>
 </body>
 </html>
@@ -296,37 +246,11 @@ def battle_api():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/evolution/<name>')
-def get_evolution_api(name):
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Get base Pokemon
-        pokemon = loop.run_until_complete(pokemon_client.get_pokemon(name.lower()))
-        if not pokemon:
-            return jsonify({'success': False, 'error': 'Pokemon not found'})
-        
-        # Get evolution line
-        evolution_line = loop.run_until_complete(evolution_client.get_evolution_line(pokemon.species_url))
-        
-        return jsonify({
-            'success': True,
-            'evolution': {
-                'pokemon_name': pokemon.name,
-                'evolution_line': evolution_line
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 if __name__ == '__main__':
     print("🌟 Starting Pokemon MCP Server Web Demo...")
     print("🎮 Features available:")
     print("   • Pokemon data lookup with stats and sprites")
     print("   • Advanced battle simulation with detailed logs")
-    print("   • Evolution chain analysis")
     print("   • Clean, responsive web interface")
     print("\n🚀 Access the demo at: http://localhost:5000")
     print("📱 Mobile-friendly responsive design")

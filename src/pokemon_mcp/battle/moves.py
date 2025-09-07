@@ -49,15 +49,15 @@ class MoveClient:
             
             data = response.json()
             
-            # Parse move data
+            # Parse move data with null checks
             move = Move(
                 name=data['name'],
                 type=data['type']['name'],
                 category=MoveCategory(data['damage_class']['name']),
-                power=data['power'] or 0,
-                accuracy=data['accuracy'] or 100,
-                pp=data['pp'] or 10,
-                priority=data['priority'],
+                power=data['power'] if data['power'] is not None else 0,  # Handle null power
+                accuracy=data['accuracy'] if data['accuracy'] is not None else 100,  # Handle null accuracy
+                pp=data['pp'] if data['pp'] is not None else 10,  # Handle null pp
+                priority=data.get('priority', 0),
                 description=self._get_move_description(data)
             )
             
@@ -96,6 +96,8 @@ class MoveClient:
     def _parse_status_effects(self, data: dict) -> tuple[Optional[StatusEffect], float]:
         """Parse status effects from move data"""
         effect_chance = data.get('effect_chance', 0)
+        if effect_chance is None:
+            effect_chance = 0
         
         # Map common status-inducing moves
         status_keywords = {
@@ -106,11 +108,14 @@ class MoveClient:
             'freeze': StatusEffect.FREEZE
         }
         
-        effect_text = data.get('effect_entries', [{}])[0].get('effect', '').lower()
+        effect_entries = data.get('effect_entries', [])
+        effect_text = ""
+        if effect_entries:
+            effect_text = effect_entries[0].get('effect', '').lower()
         
         for keyword, status in status_keywords.items():
             if keyword in effect_text:
-                return status, effect_chance / 100.0
+                return status, effect_chance / 100.0 if effect_chance > 0 else 0.0
         
         return None, 0.0
 

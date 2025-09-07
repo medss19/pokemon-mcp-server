@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from ..data.pokemon_client import Pokemon
 from .mechanics import get_type_effectiveness
 from .moves import Move, MoveCategory, get_pokemon_moves
-from .status import StatusManager, StatusCondition
+from .status import StatusCondition
 
 @dataclass
 class BattleLog:
@@ -27,24 +27,12 @@ class BattleStats:
     special_attack: int
     special_defense: int
     speed: int
-    accuracy: int = 100
-    evasion: int = 100
-    
-    # Stat stage modifiers (-6 to +6)
-    attack_stage: int = 0
-    defense_stage: int = 0
-    special_attack_stage: int = 0
-    special_defense_stage: int = 0
-    speed_stage: int = 0
-    accuracy_stage: int = 0
-    evasion_stage: int = 0
 
 class BattlePokemon:
     def __init__(self, pokemon: Pokemon):
         self.pokemon = pokemon
         self.current_hp = pokemon.stats.hp
         self.max_hp = pokemon.stats.hp
-        self.status: Optional[StatusCondition] = None
         self.moves = []  # Will be populated with Move objects
         self.battle_stats = BattleStats(
             attack=pokemon.stats.attack,
@@ -66,51 +54,31 @@ class BattlePokemon:
         """Initialize moves from API data"""
         self.moves = await get_pokemon_moves(self.pokemon.moves)
     
-    def get_effective_stat(self, stat_name: str) -> int:
-        """Calculate effective stat with stage modifications"""
-        base_stat = getattr(self.battle_stats, stat_name)
-        stage = getattr(self.battle_stats, f"{stat_name}_stage")
-        
-        if stage >= 0:
-            multiplier = (2 + stage) / 2
-        else:
-            multiplier = 2 / (2 + abs(stage))
-        
-        return int(base_stat * multiplier)
-    
-    def modify_stat_stage(self, stat_name: str, stages: int) -> bool:
-        """Modify a stat stage, returns True if successful"""
-        current_stage = getattr(self.battle_stats, f"{stat_name}_stage")
-        new_stage = max(-6, min(6, current_stage + stages))
-        
-        if new_stage != current_stage:
-            setattr(self.battle_stats, f"{stat_name}_stage", new_stage)
-            return True
-        return False
+    def get_stat(self, stat_name: str) -> int:
+        """Get base stat value"""
+        return getattr(self.battle_stats, stat_name)
 
 class BattleEngine:
     def __init__(self):
         self.logs = []
         self.turn = 0
-        self.weather = None
-        self.terrain = None
         
     def calculate_damage(self, attacker: BattlePokemon, 
-                                defender: BattlePokemon, move: Move) -> int:
-        """Advanced damage calculation with all modifiers"""
+                                defender: BattlePokemon, move: Move) -> Tuple[int, bool, float]:
+        """Basic damage calculation"""
         
         # Base power
         power = move.power
         if power == 0:  # Status move
-            return 0
+            return 0, False, 1.0
             
         # Attack and Defense stats
         if move.category == MoveCategory.PHYSICAL:
-            attack = attacker.get_effective_stat('attack')
-            defense = defender.get_effective_stat('defense')
+            attack = attacker.get_stat('attack')
+            defense = defender.get_stat('defense')
         else:  # Special
-            attack = attacker.get_effective_stat('special_attack')
-            defense = defender.get_effective_stat('special_defense')
+            attack = attacker.get_stat('special_attack')
+            defense = defender.get_stat('special_defense')
         
         # Level (assuming level 50 for all Pokemon)
         level = 50
@@ -135,30 +103,12 @@ class BattleEngine:
         # Random factor (85-100%)
         damage *= random.uniform(0.85, 1.0)
         
-        # Apply status modifications
-        damage, _ = StatusManager.modify_damage(attacker.status, int(damage))
-        
         return max(1, int(damage)), critical, type_mult
     
     def check_accuracy(self, attacker: BattlePokemon, 
-                      defender: BattlePokemon, move: Move) -> bool:
-        """Check if move hits based on accuracy and evasion"""
-        accuracy = move.accuracy
-        
-        # Apply accuracy/evasion stage modifiers
-        acc_stage = attacker.battle_stats.accuracy_stage
-        eva_stage = defender.battle_stats.evasion_stage
-        
-        stage_diff = acc_stage - eva_stage
-        
-        if stage_diff >= 0:
-            multiplier = (3 + stage_diff) / 3
-        else:
-            multiplier = 3 / (3 + abs(stage_diff))
-        
-        final_accuracy = accuracy * multiplier
-        
-        return random.randint(1, 100) <= final_accuracy
+                  defender: BattlePokemon, move: Move) -> bool:
+        """Check if move hits based on accuracy"""
+        return random.randint(1, 100) <= move.accuracy
     
     def select_move(self, pokemon: BattlePokemon, 
                    opponent: BattlePokemon) -> Move:
@@ -207,8 +157,8 @@ class BattleEngine:
             self._log(f"--- Turn {self.turn} ---")
             
             # Determine turn order
-            p1_speed = p1.get_effective_stat('speed')
-            p2_speed = p2.get_effective_stat('speed')
+            p1_speed = p1.get_stat('speed')
+            p2_speed = p2.get_stat('speed')
             
             if p1_speed >= p2_speed:
                 first, second = p1, p2
@@ -217,13 +167,10 @@ class BattleEngine:
             
             # Execute turns
             if not first.is_fainted:
-                await self._execute_turn(first, second)
+                self._execute_turn(first, second)
             
             if not second.is_fainted and not first.is_fainted:
-                await self._execute_turn(second, first)
-            
-            # End of turn effects (weather, status, etc.)
-            self._apply_end_turn_effects(p1, p2)
+                self._execute_turn(second, first)
         
         # Determine winner
         if p1.is_fainted:
@@ -242,28 +189,9 @@ class BattleEngine:
             logs=self.logs
         )
     
-    async def _execute_turn(self, attacker: BattlePokemon, 
+    def _execute_turn(self, attacker: BattlePokemon, 
                            defender: BattlePokemon):
         """Execute a Pokemon's turn"""
-        # Status effects at turn start
-        if attacker.status:
-            old_hp = attacker.current_hp
-            attacker.current_hp, status_msg = StatusManager.apply_status_damage(
-                attacker.pokemon.name, attacker.current_hp, attacker.max_hp, attacker.status
-            )
-            if status_msg:
-                self._log(status_msg)
-            
-            if attacker.is_fainted:
-                self._log(f"{attacker.pokemon.name} fainted from status damage!")
-                return
-        
-        # Check if can attack
-        can_attack, msg = StatusManager.can_attack(attacker.pokemon.name, attacker.status)
-        if not can_attack:
-            self._log(msg)
-            return
-        
         # Select and use move
         move = self.select_move(attacker, defender)
         self._use_move(attacker, defender, move)
@@ -301,24 +229,6 @@ class BattleEngine:
                 self._log(f"{defender.pokemon.name} fainted!")
             else:
                 self._log(f"{defender.pokemon.name}: {defender.current_hp}/{defender.max_hp} HP remaining")
-        
-        # Apply status effects
-        if move.status_effect and random.random() < move.status_chance:
-            if not defender.status:
-                defender.status = StatusManager.create_status(move.status_effect)
-                self._log(f"{defender.pokemon.name} was {move.status_effect.value}ed!")
-    
-    def _apply_end_turn_effects(self, p1: BattlePokemon, p2: BattlePokemon):
-        """Apply end-of-turn effects like status duration"""
-        for pokemon in [p1, p2]:
-            if pokemon.status:
-                old_status = pokemon.status
-                pokemon.status = StatusManager.tick_status(pokemon.status)
-                msg = StatusManager.get_status_message(
-                    pokemon.pokemon.name, old_status, pokemon.status
-                )
-                if msg:
-                    self._log(msg)
     
     def _log(self, message: str):
         """Add message to battle log"""

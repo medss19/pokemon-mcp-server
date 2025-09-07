@@ -47,7 +47,6 @@ async def read_resource(uri: str) -> str:
         - Types (Fire, Water, Grass, etc.)
         - Abilities
         - Available moves
-        - Evolution information
         
         To query specific Pokemon data, use the get_pokemon tool with a Pokemon name or ID.
         
