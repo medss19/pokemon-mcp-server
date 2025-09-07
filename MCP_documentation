@@ -1,0 +1,302 @@
+# MCP Integration Documentation
+## How the Pokémon Resource Exposes Data to LLMs
+
+### Overview
+The Pokémon MCP server exposes comprehensive Pokémon data through the Model Context Protocol (MCP), enabling Large Language Models (LLMs) to seamlessly access and interact with Pokémon information for analysis, comparison, and battle simulation.
+
+## Resource Architecture
+
+### 1. MCP Resources
+The server exposes two primary resources that LLMs can read:
+
+#### `pokemon://data` Resource
+```json
+{
+  "description": "Pokemon Data Resource",
+  "features": [
+    "Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)",
+    "Types (Fire, Water, Grass, Electric, etc.)",
+    "Abilities and their effects",
+    "Available moves and move data", 
+    "Evolution chains and requirements",
+    "Physical characteristics (height, weight)",
+    "Base experience and sprites"
+  ],
+  "data_source": "PokeAPI (https://pokeapi.co)",
+  "total_pokemon": "1000+ Pokemon available"
+}
+```
+
+#### `pokemon://types` Resource
+```json
+{
+  "description": "Type Effectiveness Chart",
+  "type_chart": {
+    "fire": {"grass": 2.0, "water": 0.5, "ice": 2.0},
+    "water": {"fire": 2.0, "ground": 2.0, "grass": 0.5}
+  },
+  "effectiveness_values": {
+    "2.0": "Super effective (2x damage)",
+    "1.0": "Normal effectiveness (1x damage)",
+    "0.5": "Not very effective (0.5x damage)",
+    "0.0": "No effect (0x damage)"
+  }
+}
+```
+
+### 2. MCP Tools
+Three tools enable LLMs to query and interact with Pokémon data:
+
+#### Tool 1: `get_pokemon`
+**Purpose**: Retrieve comprehensive Pokémon information
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "name_or_id": {
+      "type": "string",
+      "description": "Pokemon name (e.g., 'pikachu') or ID number (e.g., '25')"
+    }
+  },
+  "required": ["name_or_id"]
+}
+```
+
+**Output Structure**:
+```json
+{
+  "basic_info": {
+    "id": 25,
+    "name": "pikachu",
+    "height": "0.4m",
+    "weight": "6.0kg",
+    "base_experience": 112,
+    "sprite_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"
+  },
+  "types": ["electric"],
+  "stats": {
+    "hp": 35,
+    "attack": 55,
+    "defense": 40,
+    "special_attack": 50,
+    "special_defense": 50,
+    "speed": 90,
+    "total": 320
+  },
+  "abilities": ["Static", "Lightning Rod"],
+  "moves": {
+    "sample_moves": ["thunder-shock", "quick-attack", "thunder-wave"],
+    "total_available": 42
+  },
+  "evolution": {
+    "evolution_chain": [
+      {"name": "pichu", "trigger": "friendship"},
+      {"name": "pikachu", "trigger": "thunder-stone"},
+      {"name": "raichu"}
+    ],
+    "total_stages": 3
+  }
+}
+```
+
+#### Tool 2: `simulate_battle`
+**Purpose**: Simulate advanced Pokémon battles with comprehensive mechanics
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "pokemon1": {"type": "string", "description": "First Pokemon battler"},
+    "pokemon2": {"type": "string", "description": "Second Pokemon battler"}
+  },
+  "required": ["pokemon1", "pokemon2"]
+}
+```
+
+**Output Structure**:
+```json
+{
+  "battle_summary": {
+    "winner": "charizard",
+    "loser": "venusaur",
+    "total_turns": 8,
+    "battle_type": "Advanced Pokemon Battle Simulation"
+  },
+  "participants": {
+    "pokemon1": {
+      "name": "charizard",
+      "types": ["fire", "flying"],
+      "stats": {"hp": 78, "attack": 84, "speed": 100}
+    },
+    "pokemon2": {
+      "name": "venusaur", 
+      "types": ["grass", "poison"],
+      "stats": {"hp": 80, "attack": 82, "speed": 80}
+    }
+  },
+  "mechanics_used": [
+    "Type effectiveness calculations",
+    "STAB (Same Type Attack Bonus)",
+    "Critical hit chances",
+    "Speed-based turn order",
+    "Status effect applications"
+  ],
+  "detailed_log": [
+    {"turn": 1, "message": "Battle begins! charizard vs venusaur"},
+    {"turn": 1, "message": "charizard uses flamethrower!"},
+    {"turn": 1, "message": "It's super effective! Deals 45 damage!"}
+  ]
+}
+```
+
+#### Tool 3: `get_evolution_chain`
+**Purpose**: Retrieve complete evolution information for any Pokémon
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "pokemon_name": {"type": "string", "description": "Pokemon name to get evolution chain for"}
+  },
+  "required": ["pokemon_name"]
+}
+```
+
+## How LLMs Query the Resource
+
+### Example LLM Interactions
+
+#### Scenario 1: Pokémon Analysis
+```
+LLM Query: "Compare Pikachu and Raichu's stats"
+
+MCP Calls:
+1. get_pokemon({"name_or_id": "pikachu"})
+2. get_pokemon({"name_or_id": "raichu"})
+
+LLM Analysis: Based on the returned data, the LLM can compare:
+- Base stats (Raichu has higher attack/special attack)
+- Speed differences (Pikachu: 90, Raichu: 110)
+- Type advantages (both Electric type)
+- Evolution relationship
+```
+
+#### Scenario 2: Battle Prediction
+```
+LLM Query: "Who would win: Charizard vs Blastoise?"
+
+MCP Calls:
+1. simulate_battle({"pokemon1": "charizard", "pokemon2": "blastoise"})
+
+LLM Response: The LLM receives detailed battle simulation including:
+- Turn-by-turn combat log
+- Type effectiveness (Water vs Fire)
+- Statistical breakdown
+- Winner determination
+```
+
+#### Scenario 3: Team Building
+```
+LLM Query: "Build a balanced team starting with Bulbasaur"
+
+MCP Calls:
+1. get_pokemon({"name_or_id": "bulbasaur"})
+2. get_evolution_chain({"pokemon_name": "bulbasaur"})
+3. Multiple get_pokemon() calls for type coverage analysis
+
+LLM Strategy: Uses evolution data and type coverage to suggest complementary Pokémon
+```
+
+## Data Exposure Methods
+
+### 1. Structured JSON Responses
+- **Consistent Format**: All responses follow standardized JSON schema
+- **Type Safety**: Validated data structures with proper typing
+- **Hierarchical Organization**: Logical grouping of related information
+
+### 2. Real-time API Integration
+- **Live Data**: Direct connection to PokeAPI for up-to-date information
+- **No Hardcoding**: Dynamic data retrieval for all 1000+ Pokémon
+- **Caching**: Intelligent caching system for performance optimization
+
+### 3. Comprehensive Coverage
+- **Complete Stats**: All six base stats for battle calculations
+- **Type System**: Full 18-type effectiveness chart implementation  
+- **Move Database**: Access to extensive move pools for each Pokémon
+- **Evolution Data**: Complete evolution chains with requirements
+
+### 4. Error Handling & Validation
+- **Graceful Failures**: Informative error messages for invalid requests
+- **Input Validation**: Proper handling of malformed inputs
+- **Fallback Systems**: Default behaviors for missing data
+
+## Technical Implementation Details
+
+### MCP Protocol Compliance
+```python
+# Resource Declaration
+@server.list_resources()
+async def list_resources() -> list[Resource]:
+    return [
+        Resource(
+            uri="pokemon://data",
+            name="Pokemon Database", 
+            description="Comprehensive Pokemon data access",
+            mimeType="application/json"
+        )
+    ]
+
+# Tool Declaration  
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="get_pokemon",
+            description="Get detailed Pokemon information",
+            inputSchema={...}
+        )
+    ]
+```
+
+### Data Flow Architecture
+```
+LLM Request → MCP Client → MCP Server → PokeAPI → Response Processing → LLM
+```
+
+1. **LLM Query**: Natural language request about Pokémon
+2. **MCP Translation**: Client converts to MCP tool/resource calls
+3. **Server Processing**: Validates input and fetches data
+4. **API Integration**: Retrieves live data from PokeAPI
+5. **Response Formatting**: Structures data for LLM consumption
+6. **LLM Analysis**: Processes structured data for user response
+
+## Integration Benefits
+
+### For LLM Applications
+- **Rich Context**: Access to comprehensive Pokémon knowledge base
+- **Battle Analysis**: Advanced simulation capabilities for strategic insights
+- **Evolution Planning**: Complete evolution chains for team building
+- **Type Strategy**: Full type effectiveness for battle optimization
+
+### For Developers
+- **Standardized Interface**: MCP protocol ensures consistent integration
+- **Scalable Architecture**: Async design handles concurrent requests
+- **Extensible Framework**: Easy addition of new features and tools
+- **Production Ready**: Comprehensive error handling and logging
+
+## Advanced Features
+
+### Battle Simulation Mechanics
+- **Type Effectiveness**: 18-type system with accurate multipliers
+- **Status Effects**: Burn, Poison, Paralysis, Sleep, Freeze
+- **Critical Hits**: 6.25% base chance with damage multiplication
+- **STAB Bonus**: 1.5x damage for same-type moves
+- **Speed Calculations**: Turn order based on speed stats
+
+### Caching System
+- **Performance Optimization**: Reduces API calls through intelligent caching
+- **Memory Management**: Efficient storage of frequently accessed data
+- **Cache Invalidation**: Automatic refresh of stale data
+
+This documentation demonstrates how the MCP server successfully bridges the gap between AI systems and Pokémon data, providing LLMs with rich, structured access to comprehensive Pokémon information through standardized protocols.
