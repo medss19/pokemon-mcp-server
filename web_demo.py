@@ -1,7 +1,8 @@
-# simple_web_demo.py
+# web_demo.py
 """
-Simple Pokemon MCP Server Web Demo
+Simple Pokemon MCP Server Web Demo - DEVELOPMENT ONLY
 A lightweight Flask app to demonstrate Pokemon features
+NOTE: This is NOT how MCP works in production - it's for testing only
 """
 import asyncio
 import sys
@@ -44,20 +45,27 @@ HTML_TEMPLATE = """
         .battle-log { max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 5px; }
         .log-entry { margin: 3px 0; padding: 3px; }
         .turn-header { background: #e3f2fd; font-weight: bold; padding: 5px; border-radius: 3px; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         @media (max-width: 768px) { .pokemon-info, .stats { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
+    <div class="warning">
+        <strong>⚠️ Development Demo Only</strong><br>
+        This web interface is for testing purposes. In production, this MCP server communicates with LLMs via stdin/stdout protocol.
+        Real usage: LLM → MCP Client → This Server → Pokemon Data
+    </div>
+
     <div class="header">
         <h1>🎮 Pokemon MCP Server Demo</h1>
-        <p>Advanced Pokemon Data & Battle Simulation</p>
+        <p>Testing Pokemon Data & Battle Simulation Features</p>
     </div>
 
     <div class="section">
         <h2>🔍 Pokemon Lookup</h2>
         <div class="form-group">
-            <label>Pokemon Name:</label>
-            <input type="text" id="pokemon-name" placeholder="e.g., pikachu, charizard">
+            <label>Pokemon Name or ID:</label>
+            <input type="text" id="pokemon-name" placeholder="e.g., pikachu, charizard, 25">
         </div>
         <button onclick="searchPokemon()">Search Pokemon</button>
         <div id="pokemon-result"></div>
@@ -77,6 +85,16 @@ HTML_TEMPLATE = """
         </div>
         <button onclick="simulateBattle()">Start Battle!</button>
         <div id="battle-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>🔄 Evolution Chain</h2>
+        <div class="form-group">
+            <label>Pokemon Name:</label>
+            <input type="text" id="evolution-name" placeholder="e.g., bulbasaur, squirtle">
+        </div>
+        <button onclick="getEvolution()">Get Evolution Chain</button>
+        <div id="evolution-result"></div>
     </div>
 
     <script>
@@ -104,6 +122,7 @@ HTML_TEMPLATE = """
                                     <img src="${p.sprite}" alt="${p.name}" style="width: 150px; height: 150px;">
                                     <h3>${p.name.charAt(0).toUpperCase() + p.name.slice(1)} #${p.id}</h3>
                                     <p><strong>Types:</strong> ${p.types.join(', ')}</p>
+                                    <p><strong>Height:</strong> ${p.height} | <strong>Weight:</strong> ${p.weight}</p>
                                 </div>
                                 <div class="stats">
                                     <div class="stat"><strong>HP:</strong> ${p.stats.hp}</div>
@@ -114,7 +133,8 @@ HTML_TEMPLATE = """
                                     <div class="stat"><strong>Speed:</strong> ${p.stats.speed}</div>
                                 </div>
                             </div>
-                            <p><strong>Moves:</strong> ${p.moves.slice(0, 8).join(', ')}</p>
+                            <p><strong>Abilities:</strong> ${p.abilities.join(', ')}</p>
+                            <p><strong>Sample Moves:</strong> ${p.moves.slice(0, 8).join(', ')}</p>
                         </div>
                     `;
                 } else {
@@ -170,6 +190,47 @@ HTML_TEMPLATE = """
                 result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
             }
         }
+
+        async function getEvolution() {
+            const name = document.getElementById('evolution-name').value.trim();
+            const result = document.getElementById('evolution-result');
+            
+            if (!name) {
+                result.innerHTML = '<div class="result error">Please enter a Pokemon name</div>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="result">🔄 Loading evolution data...</div>';
+            
+            try {
+                const response = await fetch(`/api/evolution/${encodeURIComponent(name)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const chain = data.evolution.evolution_chain;
+                    result.innerHTML = `
+                        <div class="result success">
+                            <h3>🔄 Evolution Chain (${chain.length} stages)</h3>
+                            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                                ${chain.map((pokemon, index) => `
+                                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
+                                        <h4>Stage ${index + 1}</h4>
+                                        <strong>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</strong>
+                                        ${pokemon.trigger ? `<br><small>Evolves via: ${pokemon.trigger}</small>` : ''}
+                                        ${pokemon.min_level ? `<br><small>Level: ${pokemon.min_level}</small>` : ''}
+                                        ${pokemon.item ? `<br><small>Item: ${pokemon.item}</small>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `<div class="result error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
+            }
+        }
     </script>
 </body>
 </html>
@@ -201,14 +262,17 @@ def get_pokemon_api(name):
                         'special_defense': pokemon.stats.special_defense,
                         'speed': pokemon.stats.speed
                     },
-                    'moves': pokemon.moves[:8],
-                    'sprite': pokemon.sprite_url
+                    'moves': pokemon.moves,
+                    'abilities': pokemon.abilities,
+                    'sprite': pokemon.sprite_url,
+                    'height': f"{pokemon.height/10}m",
+                    'weight': f"{pokemon.weight/10}kg"
                 }
             })
         else:
-            return jsonify({'success': False, 'error': 'Pokemon not found'})
+            return jsonify({'success': False, 'error': 'Pokemon not found. Please check spelling or try a different name.'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'})
 
 @app.route('/api/battle', methods=['POST'])
 def battle_api():
@@ -227,10 +291,12 @@ def battle_api():
         pokemon1 = loop.run_until_complete(pokemon_client.get_pokemon(pokemon1_name.lower()))
         pokemon2 = loop.run_until_complete(pokemon_client.get_pokemon(pokemon2_name.lower()))
         
-        if not pokemon1 or not pokemon2:
-            return jsonify({'success': False, 'error': 'One or both Pokemon not found'})
+        if not pokemon1:
+            return jsonify({'success': False, 'error': f'Pokemon "{pokemon1_name}" not found. Please check spelling.'})
+        if not pokemon2:
+            return jsonify({'success': False, 'error': f'Pokemon "{pokemon2_name}" not found. Please check spelling.'})
         
-        # Simulate battle
+        # Simulate battle (FIXED: Now properly async)
         result = loop.run_until_complete(battle_engine.simulate_battle(pokemon1, pokemon2))
         
         return jsonify({
@@ -244,15 +310,39 @@ def battle_api():
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': f'Battle simulation error: {str(e)}'})
+
+@app.route('/api/evolution/<name>')
+def evolution_api(name):
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Get Pokemon first
+        pokemon = loop.run_until_complete(pokemon_client.get_pokemon(name.lower()))
+        if not pokemon:
+            return jsonify({'success': False, 'error': f'Pokemon "{name}" not found'})
+            
+        # Get evolution chain
+        evolution_data = loop.run_until_complete(pokemon_client.get_evolution_chain(pokemon.species_url))
+        
+        return jsonify({
+            'success': True,
+            'evolution': evolution_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Evolution data error: {str(e)}'})
 
 if __name__ == '__main__':
     print("🌟 Starting Pokemon MCP Server Web Demo...")
+    print("⚠️  IMPORTANT: This is a DEVELOPMENT DEMO only!")
+    print("📝 Real MCP servers communicate with LLMs via stdin/stdout")
     print("🎮 Features available:")
-    print("   • Pokemon data lookup with stats and sprites")
-    print("   • Advanced battle simulation with detailed logs")
+    print("   • Pokemon data lookup with comprehensive stats")
+    print("   • Advanced battle simulation with detailed logs") 
+    print("   • Evolution chain information")
     print("   • Clean, responsive web interface")
     print("\n🚀 Access the demo at: http://localhost:5000")
-    print("📱 Mobile-friendly responsive design")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
