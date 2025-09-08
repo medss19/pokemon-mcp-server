@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server implementation that provides AI models with comprehensive access to Pokemon data and advanced battle simulation capabilities. This server enables Large Language Models to understand, analyze, and interact with Pokemon information through standardized MCP interfaces.
 
+🎬 **[Jump to MCP Client Integration Video](#mcp-client-integration-video)**
+
 ## Project Overview
 
 This MCP server implements the core requirements for the Pokemon Battle Simulation technical assessment:
@@ -136,15 +138,22 @@ This provides a web interface to test Pokemon lookup and battle simulation featu
 
 ## MCP Client Integration Video
 
-*[This section will contain screenshots and/or video demonstration of MCP client integration]*
+https://drive.google.com/file/d/1OskQknP8aBprbhbFhv-sVu-_jgegghIM/view?usp=sharing 
 
 ### Integration Steps
 1. Start the MCP server: `python run_server.py`
+ 
+   <img width="2186" height="871" alt="image" src="https://github.com/user-attachments/assets/98b13d4d-548e-443d-a68d-3284cb76100b" />
+
 2. Configure your MCP client to connect to the server
+ 
+   <img width="2156" height="864" alt="image" src="https://github.com/user-attachments/assets/b2bf7d4d-f8e3-4e32-928f-47e09f2ab61f" />
+   
 3. LLM can now access Pokemon data and battle simulation tools
-
-*Video/screenshots demonstrating the integration process will be added here*
-
+   
+   <img width="1251" height="925" alt="image" src="https://github.com/user-attachments/assets/8bd511f9-1b19-4e17-ac41-c7c5cffd3b6e" />
+   
+   <img width="726" height="412" alt="image" src="https://github.com/user-attachments/assets/8cd335ea-3fdd-4809-aebb-d4322c83b7ef" />
 
 ## Technical Implementation
 
