@@ -1,5 +1,6 @@
 # src/pokemon_mcp/battle/moves.py
 import httpx
+import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from enum import Enum
@@ -71,7 +72,7 @@ class MoveClient:
             return move
             
         except Exception as e:
-            print(f"Error fetching move {move_name}: {e}")
+            print(f"Error fetching move {move_name}: {e}", file=sys.stderr)
             return self._create_default_move(move_name)
     
     def _create_default_move(self, move_name: str) -> Move:
