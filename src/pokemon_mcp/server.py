@@ -1,4 +1,3 @@
-# src/pokemon_mcp/server.py
 import asyncio
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
@@ -56,7 +55,7 @@ async def read_resource(uri: str) -> str:
             ],
             "usage": {
                 "tool": "get_pokemon",
-                "description": "Use get_pokemon tool with Pokemon name or ID to fetch detailed data",
+                "description": "Use get_pokemon tool with Pokemon name or ID to fetch detailed data including evolution chain",
                 "examples": [
                     "get_pokemon('pikachu')",
                     "get_pokemon('25')",
@@ -90,7 +89,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="get_pokemon",
-            description="Get detailed information about a specific Pokemon including stats, types, abilities, moves, and evolution data",
+            description="Get detailed information about a specific Pokemon including stats, types, abilities, moves, and complete evolution chain data",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -118,20 +117,6 @@ async def list_tools() -> list[Tool]:
                     }
                 },
                 "required": ["pokemon1", "pokemon2"]
-            }
-        ),
-        Tool(
-            name="get_evolution_chain",
-            description="Get the complete evolution chain for a Pokemon species",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "pokemon_name": {
-                        "type": "string",
-                        "description": "Pokemon name to get evolution chain for"
-                    }
-                },
-                "required": ["pokemon_name"]
             }
         )
     ]
@@ -182,18 +167,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         }
         
         return [TextContent(type="text", text=json.dumps(pokemon_data, indent=2))]
-    
-    elif name == "get_evolution_chain":
-        pokemon_name = arguments.get("pokemon_name")
-        if not pokemon_name:
-            return [TextContent(type="text", text="Error: pokemon_name parameter is required")]
-            
-        pokemon = await pokemon_client.get_pokemon(pokemon_name)
-        if not pokemon:
-            return [TextContent(type="text", text=f"Pokemon '{pokemon_name}' not found")]
-            
-        evolution_data = await pokemon_client.get_evolution_chain(pokemon.species_url)
-        return [TextContent(type="text", text=json.dumps(evolution_data, indent=2))]
     
     elif name == "simulate_battle":
         pokemon1_name = arguments.get("pokemon1")
@@ -262,13 +235,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(battle_report, indent=2))]
     
     else:
-        return [TextContent(type="text", text=f"Unknown tool: {name}. Available tools: get_pokemon, simulate_battle, get_evolution_chain")]
+        return [TextContent(type="text", text=f"Unknown tool: {name}. Available tools: get_pokemon, simulate_battle")]
 
 async def main():
     """Main server entry point"""
+    import sys
     async with stdio_server() as (read_stream, write_stream):
-        print("🎮 Pokemon Battle MCP Server ready for connections", flush=True)
-        print("📡 Listening on stdio for MCP client connections...", flush=True)
+        # Print to stderr so it doesn't interfere with MCP JSON-RPC communication
+        print("🎮 Pokemon Battle MCP Server ready for connections", file=sys.stderr, flush=True)
+        print("📡 Listening on stdio for MCP client connections...", file=sys.stderr, flush=True)
         await server.run(
             read_stream,
             write_stream,

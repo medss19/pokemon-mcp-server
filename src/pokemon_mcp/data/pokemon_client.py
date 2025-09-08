@@ -1,6 +1,7 @@
 # src/pokemon_mcp/data/pokemon_client.py
 import httpx
 import json
+import sys
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -30,21 +31,22 @@ class Pokemon:
 class PokemonClient:
     def __init__(self):
         self.base_url = "https://pokeapi.co/api/v2"
-        self.client = httpx.AsyncClient(timeout=30.0)  # Increased timeout
-        self._cache = {}  # Simple cache to avoid repeated API calls
+        self.client = httpx.AsyncClient(timeout=30.0)
+        self._pokemon_cache = {}  # Cache for Pokemon data
+        self._evolution_cache = {}  # Cache for evolution data
         
     async def get_pokemon(self, name_or_id: str) -> Optional[Pokemon]:
         """Fetch Pokemon data from PokéAPI with caching"""
         cache_key = str(name_or_id).lower()
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        if cache_key in self._pokemon_cache:
+            return self._pokemon_cache[cache_key]
             
         try:
             url = f"{self.base_url}/pokemon/{name_or_id.lower()}"
             response = await self.client.get(url)
             
             if response.status_code != 200:
-                print(f"API Error: {response.status_code} for {name_or_id}")
+                print(f"API Error: {response.status_code} for {name_or_id}", file=sys.stderr)
                 return None
                 
             data = response.json()
@@ -66,8 +68,8 @@ class PokemonClient:
             # Extract abilities  
             abilities = [a['ability']['name'].replace('-', ' ').title() for a in data['abilities']]
             
-            # Extract moves (get more moves for better battle variety)
-            moves = [m['move']['name'] for m in data['moves'][:50]]  # Increased from 20
+            # Extract moves (limit to 50 for better performance)
+            moves = [m['move']['name'] for m in data['moves'][:50]]
             
             # Get sprite URL
             sprite_url = data['sprites']['front_default'] or ""
@@ -87,15 +89,19 @@ class PokemonClient:
             )
             
             # Cache the result
-            self._cache[cache_key] = pokemon
+            self._pokemon_cache[cache_key] = pokemon
             return pokemon
             
         except Exception as e:
-            print(f"Error fetching Pokemon {name_or_id}: {e}")
+            print(f"Error fetching Pokemon {name_or_id}: {e}", file=sys.stderr)
             return None
     
     async def get_evolution_chain(self, species_url: str) -> Dict:
-        """Fetch evolution chain information"""
+        """Fetch evolution chain information with caching"""
+        # Use species URL as cache key
+        if species_url in self._evolution_cache:
+            return self._evolution_cache[species_url]
+            
         try:
             # Get species data first
             species_response = await self.client.get(species_url)
@@ -135,7 +141,7 @@ class PokemonClient:
                     "held_item": evolution_details.get('held_item', {}).get('name') if evolution_details.get('held_item') else None
                 })
             
-            return {
+            result = {
                 "evolution_chain": chain,
                 "total_stages": len(chain),
                 "species_name": species_data['name'],
@@ -143,10 +149,16 @@ class PokemonClient:
                 "habitat": species_data.get('habitat', {}).get('name') if species_data.get('habitat') else None
             }
             
+            # Cache the result
+            self._evolution_cache[species_url] = result
+            return result
+            
         except Exception as e:
-            print(f"Error fetching evolution chain: {e}")
+            print(f"Error fetching evolution chain: {e}", file=sys.stderr)
             return {"error": f"Failed to fetch evolution data: {str(e)}"}
     
     async def close(self):
-        """Close the HTTP client"""
+        """Close the HTTP client and clear caches"""
         await self.client.aclose()
+        self._pokemon_cache.clear()
+        self._evolution_cache.clear()
