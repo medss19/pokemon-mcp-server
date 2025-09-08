@@ -1,340 +1,212 @@
-# Pokémon Battle MCP Server
-**Technical Assessment - Model Context Protocol Implementation**
+# Pokemon Battle MCP Server
 
-A comprehensive Model Context Protocol (MCP) server that provides AI models with access to Pokémon data and advanced battle simulation capabilities. This server bridges the gap between AI systems and the Pokémon world, enabling LLMs to understand and interact with Pokémon data through standardized MCP interfaces.
+A Model Context Protocol (MCP) server implementation that provides AI models with comprehensive access to Pokemon data and advanced battle simulation capabilities. This server enables Large Language Models to understand, analyze, and interact with Pokemon information through standardized MCP interfaces.
 
-## 🎯 Project Overview
+## Project Overview
 
-This MCP server implements two core functionalities as specified in the technical assessment:
+This MCP server implements the core requirements for the Pokemon Battle Simulation technical assessment:
 
-1. **Pokémon Data Resource** - Comprehensive access to Pokémon information
-2. **Battle Simulation Tool** - Advanced Pokémon battle mechanics with status effects
+- **Pokemon Data Resource**: Complete access to Pokemon information including stats, types, abilities, moves, and evolution chains
+- **Battle Simulation Tool**: Advanced Pokemon battle mechanics with type effectiveness, status effects, and detailed logging
 
-## 🚀 Quick Start
+The server acts as a bridge between AI systems and the Pokemon universe, allowing LLMs to perform complex Pokemon analysis, team building strategies, and battle predictions.
+
+## Architecture
+
+The project follows a clean, modular architecture:
+
+```
+src/pokemon_mcp/
+├── server.py                 # Main MCP server implementation
+├── data/
+│   └── pokemon_client.py     # Pokemon data fetching and caching
+├── battle/
+│   ├── engine.py            # Battle simulation engine
+│   ├── mechanics.py         # Type effectiveness and damage calculations  
+│   ├── moves.py             # Move system and effects
+│   └── status.py            # Status effect management
+└── config.py                # Server configuration
+```
+
+**Code for the MCP server with the Pokémon data resource:**
+- Primary location: `src/pokemon_mcp/server.py` (lines 15-85)
+- Supporting data client: `src/pokemon_mcp/data/pokemon_client.py`
+- This implements the MCP resources (`pokemon://data` and `pokemon://types`) and the `get_pokemon` tool
+
+**Code for the battle simulation tool following MCP's tool specification:**
+- Primary location: `src/pokemon_mcp/server.py` (lines 86-125) - the `simulate_battle` tool
+- Battle engine: `src/pokemon_mcp/battle/engine.py`
+
+## Key Features
+
+### Pokemon Data Access
+- Complete Pokemon dataset (1000+ Pokemon)
+- Base stats, types, abilities, and moves
+- Evolution chain information with requirements
+- Physical characteristics and sprites
+- Real-time data from PokeAPI with intelligent caching
+
+### Battle Simulation
+- Accurate type effectiveness calculations (18-type system)
+- Comprehensive damage formulas based on official Pokemon mechanics
+- Turn order determination using speed stats
+- Status effects: Burn, Poison, Paralysis, Sleep, Freeze
+- STAB (Same Type Attack Bonus) implementation
+- Critical hit mechanics with proper probability
+- Detailed turn-by-turn battle logging
+
+## Installation
 
 ### Prerequisites
 - Python 3.8 or higher
 - pip package manager
 
-### Installation
-```bash
-# Clone the repository
-git clone <repository-url>
-cd pokemon-mcp-server
+### Setup Instructions
 
-# Install dependencies
-pip install -r requirements.txt
-```
+1. **Clone or extract the project**
+   ```bash
+   cd pokemon-mcp-server
+   ```
 
-### Running the MCP Server
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Verify installation**
+   ```bash
+   python test_components.py
+   ```
+   This will test core functionality and API connectivity.
+
+## Running the Server
+
+### Production Mode (MCP Communication)
 ```bash
 python run_server.py
 ```
 
-The server will start and display:
+The server will display:
 ```
-🎮 Pokemon Battle MCP Server ready for connections
-📡 Listening on stdio for MCP client connections...
+Starting Pokemon Battle MCP Server...
+Pokemon Battle MCP Server ready for connections
+Listening on stdio for MCP client connections...
 ```
 
-**Important**: This is normal MCP server behavior! The server communicates via stdin/stdout and waits for MCP client connections.
+**Important**: This is normal MCP behavior. The server communicates via stdin/stdout and waits for MCP client connections. It does not provide a web interface in production mode.
 
-### Testing Components (Optional)
+### Development Demo (Web Interface)
+For testing and demonstration purposes, run:
 ```bash
-python test_components.py
+python web_demo.py
 ```
 
-### Demo Web Interface (Development Only)
-```bash
-python simple_web_demo.py
-```
-Access at: http://localhost:5000
+Then visit: http://localhost:5000
 
-## 📋 Assignment Deliverables
+1. **Pokemon Lookup**: Search any Pokemon by name or ID to view complete stats, types, abilities, and evolution chain
+2. **Battle Simulation**: Enter two Pokemon names to simulate a detailed battle with comprehensive mechanics
 
-### Part 1: Pokémon Data Resource ✅
+This provides a web interface to test Pokemon lookup and battle simulation features. Note that this is for development only - real MCP servers communicate with LLMs through the MCP protocol.
 
-**Requirement**: Design and implement an MCP resource that connects to public Pokémon datasets
+## MCP Integration
 
-**Implementation**:
-- **Resource URI**: `pokemon://data`
-- **Data Source**: PokeAPI (https://pokeapi.co)
-- **Comprehensive Data Exposed**:
-  - ✅ Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
-  - ✅ Types (Fire, Water, Grass, Electric, etc.)
-  - ✅ Abilities and their effects
-  - ✅ Available moves and move data  
-  - ✅ Evolution information and chains
-  - ✅ Physical characteristics (height, weight)
-  - ✅ Sprites and images
+### Available Resources
 
-**MCP Resource Design Patterns**:
-- Follows MCP resource specification
-- JSON-structured data responses
-- Comprehensive metadata and usage examples
-- Error handling and validation
+**pokemon://data**
+- Comprehensive Pokemon database
+- Includes stats, types, abilities, moves, evolution chains
+- JSON-structured responses for LLM consumption
 
-### Part 2: Battle Simulation Tool ✅
+**pokemon://types**  
+- Complete type effectiveness chart
+- Battle calculation reference data
 
-**Requirement**: Design and implement an MCP tool for Pokémon battles
+### Available Tools
 
-**Implementation**:
-- **Tool Name**: `simulate_battle`
-- **Core Battle Mechanics**:
-  - ✅ Type effectiveness calculations (18 types, full chart)
-  - ✅ Damage calculations based on stats and move power
-  - ✅ Turn order determination based on Speed stats  
-  - ✅ Status effects implementation (Burn, Poison, Paralysis, Sleep, Freeze)
-  - ✅ STAB (Same Type Attack Bonus)
-  - ✅ Critical hit mechanics
-  - ✅ Move accuracy and PP system
+**get_pokemon**
+- Fetch detailed Pokemon information
+- Input: Pokemon name or ID
+- Output: Complete Pokemon data with evolution chain
 
-**Advanced Features**:
-- Detailed turn-by-turn battle logging
-- Winner determination based on HP depletion
-- Comprehensive battle reports with statistics
-- Support for 1000+ Pokémon
+**simulate_battle**
+- Simulate comprehensive Pokemon battles
+- Input: Two Pokemon names/IDs
+- Output: Detailed battle results with turn-by-turn logs
 
-## 🛠 MCP Tools & Resources
 
-### Available MCP Resources
+## MCP Client Integration Video
 
-#### 1. `pokemon://data`
-Comprehensive Pokémon database resource
-- **Purpose**: Exposes all Pokémon data to LLMs
-- **Data**: Stats, types, abilities, moves, evolution chains
-- **Format**: JSON-structured responses
+*[This section will contain screenshots and/or video demonstration of MCP client integration]*
 
-#### 2. `pokemon://types`  
-Type effectiveness reference
-- **Purpose**: Battle calculation reference
-- **Data**: Complete type effectiveness chart
-- **Usage**: Automatic integration in battles
+### Integration Steps
+1. Start the MCP server: `python run_server.py`
+2. Configure your MCP client to connect to the server
+3. LLM can now access Pokemon data and battle simulation tools
 
-### Available MCP Tools
+*Video/screenshots demonstrating the integration process will be added here*
 
-#### 1. `get_pokemon`
-**Purpose**: Fetch detailed Pokémon information
-**Parameters**:
-- `name_or_id` (string): Pokémon name or ID
 
-**LLM Query Examples**:
-```json
-{
-  "name": "get_pokemon",
-  "arguments": {"name_or_id": "pikachu"}
-}
-```
+## Technical Implementation
 
-#### 2. `simulate_battle`
-**Purpose**: Simulate comprehensive Pokémon battles
-**Parameters**:
-- `pokemon1` (string): First Pokémon name/ID
-- `pokemon2` (string): Second Pokémon name/ID
+### Data Source
+- Primary data from PokeAPI (https://pokeapi.co)
+- Real-time API integration with intelligent caching
+- No hardcoded Pokemon data - supports all existing and future Pokemon
 
-**LLM Query Examples**:
-```json
-{
-  "name": "simulate_battle", 
-  "arguments": {"pokemon1": "charizard", "pokemon2": "blastoise"}
-}
-```
-
-#### 3. `get_evolution_chain`
-**Purpose**: Retrieve complete evolution information
-**Parameters**:
-- `pokemon_name` (string): Pokémon to get evolution chain for
-
-## 🤖 LLM Integration Examples
-
-### How an LLM Would Query Resources
-
-**Example 1: Basic Pokémon Data Query**
-```
-LLM Request: "Tell me about Pikachu's stats"
-MCP Call: get_pokemon("pikachu")
-Response: Complete JSON with stats, types, abilities, moves
-```
-
-**Example 2: Battle Analysis**
-```  
-LLM Request: "Who would win between Charizard and Blastoise?"
-MCP Call: simulate_battle("charizard", "blastoise")
-Response: Detailed battle simulation with turn-by-turn log
-```
-
-**Example 3: Evolution Information**
-```
-LLM Request: "What's Bulbasaur's evolution line?"
-MCP Call: get_evolution_chain("bulbasaur")  
-Response: Complete evolution chain with requirements
-```
-
-### Resource Data Exposure Documentation
-
-**How the Resource Exposes Pokémon Data**:
-
-1. **Structured JSON Format**: All data returned in consistent JSON structure
-2. **Comprehensive Coverage**: 1000+ Pokémon with complete stat sets
-3. **Real-time API Integration**: Live data from PokeAPI
-4. **Caching System**: Efficient data retrieval and storage
-5. **Error Handling**: Graceful handling of invalid requests
-6. **Type Safety**: Validated data structures with proper typing
-
-**Data Structure Example**:
-```json
-{
-  "basic_info": {
-    "id": 25,
-    "name": "pikachu", 
-    "height": "0.4m",
-    "weight": "6.0kg"
-  },
-  "types": ["electric"],
-  "stats": {
-    "hp": 35,
-    "attack": 55,
-    "defense": 40,
-    "total": 320
-  },
-  "abilities": ["Static", "Lightning Rod"],
-  "evolution": {
-    "evolution_chain": [...],
-    "total_stages": 2
-  }
-}
-```
-
-## 🎮 Battle Mechanics Implementation
-
-### Type Effectiveness System
-- Complete 18-type system implemented
-- Accurate multipliers (0x, 0.5x, 1x, 2x damage)
-- Multi-type Pokémon support
-
-### Status Effects (3+ Required)
-1. **Burn** - Reduces attack, causes HP damage
-2. **Poison** - Causes HP damage each turn
-3. **Paralysis** - May prevent attacks, reduces speed
-4. **Sleep** - Prevents attacks for 1-3 turns  
-5. **Freeze** - May prevent attacks until thawed
-
-### Advanced Battle Features
-- Move PP (Power Points) system
-- Critical hit calculations (6.25% base chance)
-- STAB bonus for same-type moves
+### Battle Mechanics
+- Official Pokemon damage formula implementation
+- Complete 18-type effectiveness system
+- Status effects with proper duration and interaction rules
+- Move accuracy and Power Point (PP) system
 - Speed-based turn order with tie-breaking
-- Comprehensive damage formula implementation
-
-## 🏗 Architecture
-
-```
-src/pokemon_mcp/
-├── server.py              # Main MCP server implementation
-├── data/
-│   ├── pokemon_client.py  # PokeAPI integration & caching
-│   └── cache.py          # Data caching system
-├── battle/
-│   ├── engine.py         # Battle simulation engine  
-│   ├── mechanics.py      # Type effectiveness & damage
-│   ├── moves.py          # Move system & effects
-│   └── status.py         # Status effect management
-└── config.py             # Server configuration
-```
-
-## 🧪 Testing & Validation
-
-### Component Testing
-```bash
-python test_components.py
-```
-Tests individual components:
-- ✅ Pokémon data fetching
-- ✅ Battle engine functionality  
-- ✅ MCP server imports
-- ✅ API connectivity
-
-### MCP Client Testing  
-```bash
-python test_mcp_client.py
-```
-Tests MCP protocol integration:
-- ✅ Resource listing and reading
-- ✅ Tool execution
-- ✅ Error handling
-
-## 📝 Technical Specifications
-
-### Dependencies
-- `mcp>=1.0.0` - Model Context Protocol implementation
-- `httpx>=0.27.0` - Async HTTP client for API calls
-- `pydantic>=2.5.0` - Data validation and serialization
-- `typing-extensions>=4.8.0` - Enhanced type hints
 
 ### Performance Features
 - Async/await architecture for concurrent operations
-- HTTP connection pooling and timeouts
-- Intelligent caching system
-- Rate limiting and retry logic
-- Memory-efficient data structures
+- HTTP connection pooling and timeout handling
+- Memory-efficient caching system
+- Graceful error handling and retry logic
 
-### Error Handling
-- Graceful API failure handling
-- Invalid Pokémon name detection
-- Network timeout management  
-- Comprehensive logging system
 
-## 🔧 Configuration
+## Troubleshooting
 
-Environment variables (optional):
-```bash
-POKEAPI_BASE_URL=https://pokeapi.co/api/v2
-REQUEST_TIMEOUT=30
-MAX_RETRIES=3  
-CACHE_DURATION=3600
-```
+### Common Issues
 
-## 📖 Usage Notes
+**"Pokemon not found" errors**
+- Check Pokemon name spelling
+- Try using the Pokemon's ID number instead
+- Verify internet connection for API access
 
-### Understanding MCP
-This is an **MCP Server**, not a standalone application:
-- Communicates via stdin/stdout with MCP clients
-- Designed for LLM integration (Claude, GPT, etc.)
-- The web demo is for development/testing only
-- Production usage requires an MCP-compatible client
+**Battle simulation timeouts**
+- Some battles may take longer due to API calls
+- The system has built-in timeout protection
 
-### LLM Integration
-To use with an LLM:
-1. Start the MCP server: `python run_server.py`
-2. Configure your LLM client to connect to the MCP server
-3. LLM can now access Pokémon data and battle simulation
+**Import errors**
+- Ensure all dependencies are installed: `pip install -r requirements.txt`
+- Verify Python version compatibility (3.8+)
 
-### No Hardcoded Data
-- All Pokémon data sourced from live PokeAPI
-- No embedded datasets or hardcoded values
-- Real-time data fetching with caching
-- Supports all existing and future Pokémon
+## Project Structure Details
 
-## 🎯 Assignment Completion Status
+### Core MCP Implementation
+- **server.py**: Main MCP server with resource and tool definitions
+- **pokemon_client.py**: Pokemon data fetching with caching
+- **battle/engine.py**: Complete battle simulation system
 
-- ✅ **Part 1**: Pokémon Data Resource implemented
-- ✅ **Part 2**: Battle Simulation Tool implemented  
-- ✅ **MCP Protocol**: Full MCP server specification compliance
-- ✅ **Battle Mechanics**: Type effectiveness, damage calculation, turn order
-- ✅ **Status Effects**: 5 status effects implemented (exceeds 3 minimum)
-- ✅ **Documentation**: Comprehensive usage and integration docs
-- ✅ **Testing**: Component and integration tests included
-- ✅ **Project Structure**: Clean, maintainable codebase
-- ✅ **LLM Examples**: Clear integration examples provided
+### Battle System
+- **mechanics.py**: Type effectiveness and damage calculations
+- **moves.py**: Move system with status effects
+- **status.py**: Status effect management (Burn, Poison, etc.)
 
-## 🤝 Support
+### Development Tools
+- **web_demo.py**: Web interface for testing (development only)
+- **test_components.py**: Component testing and validation
+- **run_server.py**: Server startup script
 
-For issues or questions about this MCP server implementation, please check:
-1. Component tests: `python test_components.py`
-2. Server logs when running `python run_server.py`
-3. Web demo for functionality verification: `python simple_web_demo.py`
+### Dependencies
 
----
-
-**Ready for LLM Integration** 🚀  
-This MCP server is production-ready and follows all MCP protocol specifications for seamless AI model integration.
+Core requirements:
+- mcp >= 1.0.0 (Model Context Protocol)
+- httpx >= 0.27.0 (Async HTTP client)
+- pydantic >= 2.5.0 (Data validation)
+- typing-extensions >= 4.8.0 (Type hints)
+- anyio >= 4.0.0 (Async utilities)
+- flask >= 2.3.0 (Development demo only)
