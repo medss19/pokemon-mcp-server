@@ -42,6 +42,9 @@ HTML_TEMPLATE = """
         .pokemon-info { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin: 15px 0; }
         .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .stat { background: #f8f9fa; padding: 8px; border-radius: 5px; }
+        .evolution-chain { margin: 15px 0; padding: 15px; background: #e8f4ff; border-radius: 5px; border-left: 4px solid #2196F3; }
+        .evolution-stage { display: inline-block; background: #fff; padding: 10px 15px; margin: 5px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .evolution-arrow { color: #2196F3; font-weight: bold; margin: 0 10px; }
         .battle-log { max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 5px; }
         .log-entry { margin: 3px 0; padding: 3px; }
         .turn-header { background: #e3f2fd; font-weight: bold; padding: 5px; border-radius: 3px; }
@@ -87,16 +90,6 @@ HTML_TEMPLATE = """
         <div id="battle-result"></div>
     </div>
 
-    <div class="section">
-        <h2>🔄 Evolution Chain</h2>
-        <div class="form-group">
-            <label>Pokemon Name:</label>
-            <input type="text" id="evolution-name" placeholder="e.g., bulbasaur, squirtle">
-        </div>
-        <button onclick="getEvolution()">Get Evolution Chain</button>
-        <div id="evolution-result"></div>
-    </div>
-
     <script>
         async function searchPokemon() {
             const name = document.getElementById('pokemon-name').value.trim();
@@ -107,7 +100,7 @@ HTML_TEMPLATE = """
                 return;
             }
             
-            result.innerHTML = '<div class="result">🔄 Loading...</div>';
+            result.innerHTML = '<div class="result">🔄 Loading Pokemon data and evolution chain...</div>';
             
             try {
                 const response = await fetch(`/api/pokemon/${encodeURIComponent(name)}`);
@@ -115,6 +108,35 @@ HTML_TEMPLATE = """
                 
                 if (data.success) {
                     const p = data.pokemon;
+                    let evolutionHtml = '';
+                    
+                    if (p.evolution_chain && p.evolution_chain.length > 0) {
+                        const evolutionStages = p.evolution_chain.map((stage, index) => {
+                            let stageInfo = `<div class="evolution-stage">
+                                <strong>${stage.name.charAt(0).toUpperCase() + stage.name.slice(1)}</strong>`;
+                            
+                            if (stage.trigger && stage.trigger !== 'no-evolution') {
+                                stageInfo += `<br><small>Evolves via: ${stage.trigger}</small>`;
+                            }
+                            if (stage.min_level) {
+                                stageInfo += `<br><small>Level: ${stage.min_level}</small>`;
+                            }
+                            if (stage.item) {
+                                stageInfo += `<br><small>Item: ${stage.item}</small>`;
+                            }
+                            stageInfo += '</div>';
+                            
+                            return stageInfo;
+                        });
+                        
+                        evolutionHtml = `
+                            <div class="evolution-chain">
+                                <strong>🔄 Evolution Chain:</strong><br>
+                                ${evolutionStages.join('<span class="evolution-arrow">→</span>')}
+                            </div>
+                        `;
+                    }
+                    
                     result.innerHTML = `
                         <div class="result success">
                             <div class="pokemon-info">
@@ -133,6 +155,7 @@ HTML_TEMPLATE = """
                                     <div class="stat"><strong>Speed:</strong> ${p.stats.speed}</div>
                                 </div>
                             </div>
+                            ${evolutionHtml}
                             <p><strong>Abilities:</strong> ${p.abilities.join(', ')}</p>
                             <p><strong>Sample Moves:</strong> ${p.moves.slice(0, 8).join(', ')}</p>
                         </div>
@@ -190,47 +213,6 @@ HTML_TEMPLATE = """
                 result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
             }
         }
-
-        async function getEvolution() {
-            const name = document.getElementById('evolution-name').value.trim();
-            const result = document.getElementById('evolution-result');
-            
-            if (!name) {
-                result.innerHTML = '<div class="result error">Please enter a Pokemon name</div>';
-                return;
-            }
-            
-            result.innerHTML = '<div class="result">🔄 Loading evolution data...</div>';
-            
-            try {
-                const response = await fetch(`/api/evolution/${encodeURIComponent(name)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const chain = data.evolution.evolution_chain;
-                    result.innerHTML = `
-                        <div class="result success">
-                            <h3>🔄 Evolution Chain (${chain.length} stages)</h3>
-                            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-                                ${chain.map((pokemon, index) => `
-                                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px;">
-                                        <h4>Stage ${index + 1}</h4>
-                                        <strong>${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</strong>
-                                        ${pokemon.trigger ? `<br><small>Evolves via: ${pokemon.trigger}</small>` : ''}
-                                        ${pokemon.min_level ? `<br><small>Level: ${pokemon.min_level}</small>` : ''}
-                                        ${pokemon.item ? `<br><small>Item: ${pokemon.item}</small>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    result.innerHTML = `<div class="result error">❌ ${data.error}</div>`;
-                }
-            } catch (error) {
-                result.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
-            }
-        }
     </script>
 </body>
 </html>
@@ -248,6 +230,17 @@ def get_pokemon_api(name):
         pokemon = loop.run_until_complete(pokemon_client.get_pokemon(name.lower()))
         
         if pokemon:
+            # Fetch evolution chain data
+            evolution_chain = []
+            try:
+                if hasattr(pokemon, 'species_url') and pokemon.species_url:
+                    evolution_data = loop.run_until_complete(pokemon_client.get_evolution_chain(pokemon.species_url))
+                    if evolution_data and 'evolution_chain' in evolution_data:
+                        evolution_chain = evolution_data['evolution_chain']
+            except Exception as e:
+                print(f"Evolution chain fetch failed: {e}")
+                # Continue without evolution data
+            
             return jsonify({
                 'success': True,
                 'pokemon': {
@@ -266,7 +259,8 @@ def get_pokemon_api(name):
                     'abilities': pokemon.abilities,
                     'sprite': pokemon.sprite_url,
                     'height': f"{pokemon.height/10}m",
-                    'weight': f"{pokemon.weight/10}kg"
+                    'weight': f"{pokemon.weight/10}kg",
+                    'evolution_chain': evolution_chain
                 }
             })
         else:
@@ -312,36 +306,13 @@ def battle_api():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Battle simulation error: {str(e)}'})
 
-@app.route('/api/evolution/<name>')
-def evolution_api(name):
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Get Pokemon first
-        pokemon = loop.run_until_complete(pokemon_client.get_pokemon(name.lower()))
-        if not pokemon:
-            return jsonify({'success': False, 'error': f'Pokemon "{name}" not found'})
-            
-        # Get evolution chain
-        evolution_data = loop.run_until_complete(pokemon_client.get_evolution_chain(pokemon.species_url))
-        
-        return jsonify({
-            'success': True,
-            'evolution': evolution_data
-        })
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': f'Evolution data error: {str(e)}'})
-
 if __name__ == '__main__':
     print("🌟 Starting Pokemon MCP Server Web Demo...")
     print("⚠️  IMPORTANT: This is a DEVELOPMENT DEMO only!")
     print("📝 Real MCP servers communicate with LLMs via stdin/stdout")
     print("🎮 Features available:")
-    print("   • Pokemon data lookup with comprehensive stats")
+    print("   • Pokemon data lookup with comprehensive stats & evolution chain")
     print("   • Advanced battle simulation with detailed logs") 
-    print("   • Evolution chain information")
     print("   • Clean, responsive web interface")
     print("\n🚀 Access the demo at: http://localhost:5000")
     
